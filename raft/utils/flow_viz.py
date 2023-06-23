@@ -17,6 +17,7 @@
 
 import numpy as np
 
+
 def make_colorwheel():
     """
     Generates a color wheel for optical flow visualization as presented in:

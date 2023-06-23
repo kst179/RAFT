@@ -1,12 +1,9 @@
 import torch
 import torch.nn.functional as F
-from utils.utils import bilinear_sampler, coords_grid
 
-try:
-    import alt_cuda_corr
-except:
-    # alt_cuda_corr is not compiled
-    pass
+from raft.utils import bilinear_sampler
+from raft import alt_cuda_corr
+import sys
 
 
 class CorrBlock:
@@ -61,7 +58,15 @@ class CorrBlock:
 
 
 class AlternateCorrBlock:
+    alt_cuda_corr = None
+
     def __init__(self, fmap1, fmap2, num_levels=4, radius=4):
+        if AlternateCorrBlock.alt_cuda_corr is None:
+            print("Using experimental alternative correlation block\n"
+                  "Loading extention (can take some time at first run)", file=sys.stderr)
+            
+            AlternateCorrBlock.alt_cuda_corr = alt_cuda_corr.jit_compile()
+
         self.num_levels = num_levels
         self.radius = radius
 
@@ -83,7 +88,7 @@ class AlternateCorrBlock:
             fmap2_i = self.pyramid[i][1].permute(0, 2, 3, 1).contiguous()
 
             coords_i = (coords / 2**i).reshape(B, 1, H, W, 2).contiguous()
-            corr, = alt_cuda_corr.forward(fmap1_i, fmap2_i, coords_i, r)
+            corr, = AlternateCorrBlock.alt_cuda_corr.forward(fmap1_i, fmap2_i, coords_i, r)
             corr_list.append(corr.squeeze(1))
 
         corr = torch.stack(corr_list, dim=1)

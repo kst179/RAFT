@@ -1,25 +1,16 @@
-from __future__ import print_function, division
-import sys
-sys.path.append('core')
+from __future__ import division, print_function
 
 import argparse
 import os
-import cv2
-import time
-import numpy as np
-import matplotlib.pyplot as plt
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
-
-from torch.utils.data import DataLoader
-from raft import RAFT
-import evaluate
-import datasets
-
 from torch.utils.tensorboard import SummaryWriter
+
+from raft.scripts import evaluate
+from raft import RAFT, datasets
 
 try:
     from torch.cuda.amp import GradScaler
@@ -134,8 +125,12 @@ class Logger:
 
 
 def train(args):
+    model = nn.DataParallel(RAFT(
+        small=args.small,
+        mixed_precision=args.mixed_precision,
+        alternative_corr=args.alternative_corr,
+    ), device_ids=args.gpus)
 
-    model = nn.DataParallel(RAFT(args), device_ids=args.gpus)
     print("Parameter Count: %d" % count_parameters(model))
 
     if args.restore_ckpt is not None:
@@ -214,7 +209,7 @@ def train(args):
     return PATH
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', default='raft', help="name your experiment")
     parser.add_argument('--stage', help="determines which dataset to use for training") 
@@ -236,6 +231,9 @@ if __name__ == '__main__':
     parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--gamma', type=float, default=0.8, help='exponential weighting')
     parser.add_argument('--add_noise', action='store_true')
+
+    parser.add_argument('--chairs_split', default="chairs_split.txt", help="path to chairs_split file")
+
     args = parser.parse_args()
 
     torch.manual_seed(1234)
@@ -245,3 +243,7 @@ if __name__ == '__main__':
         os.mkdir('checkpoints')
 
     train(args)
+
+
+if __name__ == '__main__':
+    main()

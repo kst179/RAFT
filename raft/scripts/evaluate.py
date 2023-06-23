@@ -1,21 +1,13 @@
-import sys
-sys.path.append('core')
-
-from PIL import Image
 import argparse
 import os
-import time
+
 import numpy as np
 import torch
-import torch.nn.functional as F
-import matplotlib.pyplot as plt
 
-import datasets
-from utils import flow_viz
-from utils import frame_utils
-
-from raft import RAFT
-from utils.utils import InputPadder, forward_interpolate
+from raft import datasets
+from raft.raft import RAFT
+from raft.utils import frame_utils
+from raft.utils import InputPadder, forward_interpolate
 
 
 @torch.no_grad()
@@ -72,12 +64,12 @@ def create_kitti_submission(model, iters=24, output_path='kitti_submission'):
 
 
 @torch.no_grad()
-def validate_chairs(model, iters=24):
+def validate_chairs(model, chairs_split, iters=24):
     """ Perform evaluation on the FlyingChairs (test) split """
     model.eval()
     epe_list = []
 
-    val_dataset = datasets.FlyingChairs(split='validation')
+    val_dataset = datasets.FlyingChairs(split='validation', chairs_split=chairs_split)
     for val_id in range(len(val_dataset)):
         image1, image2, flow_gt, _ = val_dataset[val_id]
         image1 = image1[None].cuda()
@@ -165,28 +157,32 @@ def validate_kitti(model, iters=24):
     print("Validation KITTI: %f, %f" % (epe, f1))
     return {'kitti-epe': epe, 'kitti-f1': f1}
 
-
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', help="restore checkpoint")
     parser.add_argument('--dataset', help="dataset for evaluation")
     parser.add_argument('--small', action='store_true', help='use small model')
     parser.add_argument('--mixed_precision', action='store_true', help='use mixed precision')
     parser.add_argument('--alternate_corr', action='store_true', help='use efficent correlation implementation')
+    
+    parser.add_argument('--chairs_split', default="chairs_split.txt", help="path to chairs_split file")
+
     args = parser.parse_args()
 
-    model = torch.nn.DataParallel(RAFT(args))
+    model = torch.nn.DataParallel(RAFT(
+        small=args.small,
+        alternate_corr=args.alternate_corr,
+        mixed_precision=args.mixed_precision,
+    ))
+
     model.load_state_dict(torch.load(args.model))
 
     model.cuda()
     model.eval()
 
-    # create_sintel_submission(model.module, warm_start=True)
-    # create_kitti_submission(model.module)
-
     with torch.no_grad():
         if args.dataset == 'chairs':
-            validate_chairs(model.module)
+            validate_chairs(model.module, args.chairs_split)
 
         elif args.dataset == 'sintel':
             validate_sintel(model.module)
@@ -195,3 +191,5 @@ if __name__ == '__main__':
             validate_kitti(model.module)
 
 
+if __name__ == '__main__':
+    main()

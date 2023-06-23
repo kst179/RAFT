@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="raft"
+version="1.0.0"
+dependencies=[
+    "torch>=1.6.0",
+    "torchvision>=0.7.0",
+    "matplotlib>=3.7.1",
+    "tensorboard>=2.13.0",
+    "scipy>=1.8.0",
+    "opencv-python>=4.6.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["raft"]
+
+[project.scripts]
+raft-train = "raft.scripts.train:main"
+raft-evaluate = "raft.scripts.evaluate:main"
+raft-demo = "raft.scripts.demo:main"

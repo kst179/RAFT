@@ -1,18 +1,17 @@
 # Data loading based on https://github.com/NVIDIA/flownet2-pytorch
 
+import math
+import os
+import os.path as osp
+import random
+from glob import glob
+
 import numpy as np
 import torch
 import torch.utils.data as data
-import torch.nn.functional as F
 
-import os
-import math
-import random
-from glob import glob
-import os.path as osp
-
-from utils import frame_utils
-from utils.augmentor import FlowAugmentor, SparseFlowAugmentor
+from raft.utils import frame_utils
+from raft.utils.augmentor import FlowAugmentor, SparseFlowAugmentor
 
 
 class FlowDataset(data.Dataset):
@@ -119,14 +118,14 @@ class MpiSintel(FlowDataset):
 
 
 class FlyingChairs(FlowDataset):
-    def __init__(self, aug_params=None, split='train', root='datasets/FlyingChairs_release/data'):
+    def __init__(self, aug_params=None, split='train', root='datasets/FlyingChairs_release/data', chairs_split="./chairs_split.txt"):
         super(FlyingChairs, self).__init__(aug_params)
 
         images = sorted(glob(osp.join(root, '*.ppm')))
         flows = sorted(glob(osp.join(root, '*.flo')))
         assert (len(images)//2 == len(flows))
 
-        split_list = np.loadtxt('chairs_split.txt', dtype=np.int32)
+        split_list = np.loadtxt(chairs_split, dtype=np.int32)
         for i in range(len(flows)):
             xid = split_list[i]
             if (split=='training' and xid==1) or (split=='validation' and xid==2):
@@ -201,7 +200,7 @@ def fetch_dataloader(args, TRAIN_DS='C+T+K+S+H'):
 
     if args.stage == 'chairs':
         aug_params = {'crop_size': args.image_size, 'min_scale': -0.1, 'max_scale': 1.0, 'do_flip': True}
-        train_dataset = FlyingChairs(aug_params, split='training')
+        train_dataset = FlyingChairs(aug_params, split='training', chairs_split=args.chairs_split)
     
     elif args.stage == 'things':
         aug_params = {'crop_size': args.image_size, 'min_scale': -0.4, 'max_scale': 0.8, 'do_flip': True}

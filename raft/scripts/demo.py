@@ -1,19 +1,19 @@
 import sys
+
 sys.path.append('core')
 
 import argparse
-import os
-import cv2
 import glob
+import os
+
+import cv2
 import numpy as np
 import torch
 from PIL import Image
 
 from raft import RAFT
-from utils import flow_viz
-from utils.utils import InputPadder
-
-
+from raft.utils import flow_viz
+from raft.utils import InputPadder
 
 DEVICE = 'cuda'
 
@@ -31,16 +31,17 @@ def viz(img, flo):
     flo = flow_viz.flow_to_image(flo)
     img_flo = np.concatenate([img, flo], axis=0)
 
-    # import matplotlib.pyplot as plt
-    # plt.imshow(img_flo / 255.0)
-    # plt.show()
-
     cv2.imshow('image', img_flo[:, :, [2,1,0]]/255.0)
     cv2.waitKey()
 
 
 def demo(args):
-    model = torch.nn.DataParallel(RAFT(args))
+    model = torch.nn.DataParallel(RAFT(
+        small=args.small,
+        alternate_corr=args.alternate_corr,
+        mixed_precision=args.mixed_precision,
+    ))
+
     model.load_state_dict(torch.load(args.model))
 
     model = model.module
@@ -59,11 +60,11 @@ def demo(args):
             padder = InputPadder(image1.shape)
             image1, image2 = padder.pad(image1, image2)
 
-            flow_low, flow_up = model(image1, image2, iters=20, test_mode=True)
+            _, flow_up = model(image1, image2, iters=20, test_mode=True)
             viz(image1, flow_up)
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', help="restore checkpoint")
     parser.add_argument('--path', help="dataset for evaluation")
@@ -73,3 +74,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     demo(args)
+
+
+if __name__ == '__main__':
+    main()
