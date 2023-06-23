@@ -15,7 +15,7 @@ dependencies=[
 ]
 
 [tool.setuptools.packages.find]
-include = ["raft"]
+include = ["raft*"]
 
 [project.scripts]
 raft-train = "raft.scripts.train:main"
